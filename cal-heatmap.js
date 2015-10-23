@@ -1,7 +1,7 @@
-/*! cal-heatmap v3.5.4 (Mon Aug 24 2015 10:02:24)
+/*! cal-heatmap v3.5.3 (Thu Jul 23 2015 01:27:26)
  *  ---------------------------------------------
  *  Cal-Heatmap is a javascript module to create calendar heatmap to visualize time series data
- *  https://github.com/wa0x6e/cal-heatmap
+ *  https://github.com/kamisama/cal-heatmap
  *  Licensed under the MIT license
  *  Copyright 2014 Wan Qi Chen
  */
@@ -200,7 +200,7 @@ var CalHeatMap = function() {
 		// Formatting of the title displayed when hovering a subDomain cell
 		subDomainTitleFormat: {
 			empty: "{date}",
-			filled: "{count} {name} {connector} {date}"
+			filled: "{content}"
 		},
 
 		// Formatting of the {date} used in subDomainTitleFormat
@@ -245,6 +245,8 @@ var CalHeatMap = function() {
 
 		// Callback when clicking on a time block
 		onClick: null,
+		onMouseEnter: null,
+		onMouseLeave: null,
 
 		// Callback after painting the empty calendar
 		// Can be used to trigger an API call, once the calendar is ready to be filled
@@ -258,6 +260,8 @@ var CalHeatMap = function() {
 
 		// Callback after finishing all actions on the calendar
 		onComplete: null,
+
+		dataTooltip: null,
 
 		// Callback after fetching the datas, but before applying them to the calendar
 		// Used mainly to convert the datas if they're not formatted like expected
@@ -786,11 +790,9 @@ var CalHeatMap = function() {
 			switch(navigationDir) {
 			case false:
 				tmp = graphDim[axis];
-
 				graphDim[axis] += domainDim;
 				self.domainPosition.setPosition(domainIndex, tmp);
-				return tmp;
-
+				return tmp
 			case self.NAVIGATE_RIGHT:
 				self.domainPosition.setPosition(domainIndex, graphDim[axis]);
 
@@ -860,6 +862,16 @@ var CalHeatMap = function() {
 					return self.onClick(new Date(d.t), d.v);
 				}
 			})
+			.on('mouseenter', function (d) {
+				if (options.onMouseEnter !== null) {
+					return self.onMouseEnter(d.t, d.v, d.ot);
+				}
+			})
+			.on('mouseleave', function (d) {
+				if (options.onMouseLeave !== null) {
+					return self.onMouseLeave(d.t, d.v, d.ot);
+				}
+			})
 			.call(function(selection) {
 				if (options.cellRadius > 0) {
 					selection
@@ -877,7 +889,7 @@ var CalHeatMap = function() {
 						var domainNode = this.parentNode.parentNode;
 
 						self.tooltip
-						.html(self.getSubDomainTitle(d))
+						.html(self.gloseFormat(d))
 						.attr("style", "display: block;")
 						;
 
@@ -1137,7 +1149,7 @@ CalHeatMap.prototype = {
 		}
 
 		// Don't touch these settings
-		var s = ["data", "onComplete", "onClick", "afterLoad", "afterLoadData", "afterLoadPreviousDomain", "afterLoadNextDomain"];
+		var s = ["data", "onComplete", "onClick", "onMouseEnter", "onMouseLeave", "afterLoad", "afterLoadData", "afterLoadPreviousDomain", "afterLoadNextDomain"];
 
 		for (var k in s) {
 			if (settings.hasOwnProperty(s[k])) {
@@ -1513,6 +1525,30 @@ CalHeatMap.prototype = {
 	},
 
 	/**
+	 * Event triggered on a mouseenter on a subDomain cell
+	 *
+	 * @param  Date		d		Date of the subdomain block
+	 * @param  int		itemNb	Number of items in that date
+	 */
+	onMouseEnter: function(d, v, ot) {
+		"use strict";
+
+		return this.triggerEvent("onMouseEnter", [d, v, parseFloat(ot)]);
+	},
+
+	/**
+	 * Event triggered on a mouseleave on a subDomain cell
+	 *
+	 * @param  Date		d		Date of the subdomain block
+	 * @param  int		itemNb	Number of items in that date
+	 */
+	onMouseLeave: function(d, v, ot) {
+		"use strict";
+
+		return this.triggerEvent("onMouseLeave", [d, v, parseFloat(ot)]);
+	},
+
+	/**
 	 * Event triggered after drawing the calendar, byt before filling it with data
 	 */
 	afterLoad: function() {
@@ -1656,6 +1692,47 @@ CalHeatMap.prototype = {
 				name: this.options.itemName[(value !== 1 ? 1: 0)],
 				connector: this._domainType[this.options.subDomain].format.connector,
 				date: this.formatDate(new Date(d.t), this.options.subDomainDateFormat)
+			});
+		}
+	},
+
+	gloseFormat: function (d) {
+		"use strict";
+
+		if (d.v === null && !this.options.considerMissingDataAsZero) {
+			return (this.options.subDomainTitleFormat.empty).format({
+				date: this.formatDate(new Date(d.t), this.options.subDomainDateFormat)
+			});
+		} else {
+
+			var value = d.v;
+			var html = '';
+
+			// Consider null as 0
+			if (value === null && this.options.considerMissingDataAsZero)
+				value = 0;
+
+			if (value !== 0) {
+				var bookInfo = this.options.tooltipInfo[parseFloat(d.ot)];
+				html = [
+					'<span class="tooltip-title">' + bookInfo.mostRead.shortTitle + '</span>',
+					'<br>',
+					'<img src=' + bookInfo.mostRead.mediumImage + ' class="tooltip-cover"></img>',
+					'<br>',
+					'<span class="tooltip-value">' + this.formatNumber(value) + ' min</span>',
+					'<br>',
+					'<span class="tooltip-date">' + this.formatDate(new Date(d.t), '%A %-e') + '</span>'
+				].join('');
+			} else {
+				html = [
+					'<span class="tooltip-value">' + this.formatNumber(0) + ' min</span>',
+					'<br>',
+					'<span class="tooltip-date">' + this.formatDate(new Date(d.t), '%A %-e') + '</span>'
+				].join('');
+			}
+
+			return (this.options.subDomainTitleFormat.filled).format({
+				content: html
 			});
 		}
 	},
@@ -2582,7 +2659,6 @@ CalHeatMap.prototype = {
 		for (var d in data) {
 			var date = new Date(d*1000);
 			var domainUnit = this.getDomain(date)[0].getTime();
-
 			// The current data belongs to a domain that was compressed
 			// Compress the data for the two duplicate hours into the same hour
 			if (this.DSTDomain.indexOf(domainUnit) >= 0) {
@@ -2609,11 +2685,14 @@ CalHeatMap.prototype = {
 
 			if (updateMode === this.RESET_SINGLE_ON_UPDATE) {
 				subDomainsData[index].v = data[d];
+				subDomainsData[index].ot = d;
 			} else {
 				if (!isNaN(subDomainsData[index].v)) {
 					subDomainsData[index].v += data[d];
+					subDomainsData[index].ot = d;
 				} else {
 					subDomainsData[index].v = data[d];
+					subDomainsData[index].ot = d;
 				}
 			}
 		}
