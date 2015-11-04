@@ -1717,7 +1717,9 @@ CalHeatMap.prototype = {
 				html = [
 					'<span class="tooltip-title">' + bookInfo.mostRead.shortTitle + '</span>',
 					'<br>',
-					'<img src=' + bookInfo.mostRead.mediumImage + ' class="tooltip-cover"></img>',
+					'<div class="wrap-cover flex flex-just-center">',
+						'<img src=' + bookInfo.mostRead.mediumImage + ' class="tooltip-cover"></img>',
+					'</div>',
 					'<br>',
 					'<span class="tooltip-value">' + this.formatNumber(value) + ' min</span>',
 					'<br>',
