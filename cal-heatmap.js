@@ -1723,13 +1723,13 @@ CalHeatMap.prototype = {
 					'<br>',
 					'<span class="tooltip-value">' + this.formatNumber(value) + ' min</span>',
 					'<br>',
-					'<span class="tooltip-date">' + this.formatDate(new Date(d.t), '%A %-e') + '</span>'
+					'<span class="tooltip-date">' + this.options.subDomainDateFormat() + '</span>'
 				].join('');
 			} else {
 				html = [
 					'<span class="tooltip-value">' + this.formatNumber(0) + ' min</span>',
 					'<br>',
-					'<span class="tooltip-date">' + this.formatDate(new Date(d.t), '%A %-e') + '</span>'
+					'<span class="tooltip-date">' + this.options.subDomainDateFormat() + '</span>'
 				].join('');
 			}
 
